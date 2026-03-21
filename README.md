@@ -11,6 +11,9 @@
 - 🖥️ **交互式模式**: 提供友好的交互式命令行界面
 - 📈 **实时进度显示**: 显示扫描进度条和统计信息
 - 🔧 **模块化设计**: 各功能模块独立，便于维护和扩展
+- 🌐 **Web界面**: 提供美观的Web图形化界面
+- 🖥️ **桌面GUI**: 基于Tkinter的桌面应用程序
+- 📦 **可打包**: 支持打包成exe可执行文件
 
 ## 项目结构
 
@@ -23,9 +26,17 @@ Scan_tool/
 │   ├── scanner.py             # 扫描核心模块
 │   ├── output.py              # 输出格式化模块
 │   └── main.py                # 主程序入口
-├── run.py                      # 启动脚本
-├── requirements.txt           # 依赖列表
-└── README.md                  # 项目说明文档
+├── templates/                  # Web界面模板
+│   └── index.html             # 主页面模板
+├── static/                     # 静态资源
+│   └── style.css              # 样式文件
+├── run.py                      # 命令行启动脚本
+├── web_app.py                  # Web界面应用
+├── gui_app.py                  # 桌面GUI应用
+├── build_exe.py                # 打包脚本
+├── test_scanner.py             # 测试脚本
+├── requirements.txt            # 依赖列表
+└── README.md                   # 项目说明文档
 ```
 
 ## 模块说明
@@ -135,6 +146,53 @@ python run.py --quick 192.168.1.1 80-443
 ```bash
 python run.py --help
 ```
+
+#### 5. Web界面模式
+
+```bash
+# 启动Web界面
+python web_app.py
+
+# 然后在浏览器中访问: http://127.0.0.1:5000
+```
+
+Web界面提供以下功能：
+- 图形化配置扫描参数
+- 实时显示扫描进度和结果
+- 支持导出JSON和CSV格式
+- 响应式设计，支持移动设备
+
+#### 6. 桌面GUI模式
+
+```bash
+# 启动桌面GUI
+python gui_app.py
+```
+
+桌面GUI提供以下功能：
+- 本地桌面应用程序
+- 实时扫描进度显示
+- 结果高亮显示（开放/关闭/过滤）
+- 支持导出多种格式
+- 内置使用说明和帮助
+
+#### 7. 打包成exe文件
+
+```bash
+# 运行打包脚本
+python build_exe.py
+
+# 按照提示选择要打包的程序
+# 打包完成后在dist目录生成exe文件
+```
+
+打包选项：
+1. PortScanner - 命令行版本
+2. PortScannerGUI - 桌面GUI版本  
+3. PortScannerWeb - Web界面版本
+4. 全部打包
+
+生成的exe文件可直接双击运行，无需安装Python环境。
 
 ## 参数说明
 
