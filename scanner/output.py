@@ -279,7 +279,7 @@ def print_banner() -> None:
                                                                                 
 """
     print(banner)
-    print("简易端口扫描器 v3.0.0")
+    print("简易端口扫描器 v3.0.1")
     print("基于Python实现")
     print("=" * 50)
 

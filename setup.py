@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="port-scanner",
-    version="3.0.0",
+    version="3.0.1",
     description="基于Python的简易端口扫描器",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

@@ -95,7 +95,7 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--version",
         action="version",
-        version="%(prog)s 3.0.0"
+        version="%(prog)s 3.0.1"
     )
     
     # 解析参数

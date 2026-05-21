@@ -20,7 +20,7 @@ class PortScannerGUI:
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("端口扫描器 v3.0.0")
+        self.root.title("端口扫描器 v3.0.1")
         self.root.geometry("900x700")
         self.root.minsize(800, 600)
         
@@ -470,7 +470,7 @@ class PortScannerGUI:
     def show_about(self):
         """显示关于信息"""
         about_text = """
-端口扫描器 v3.0.0
+端口扫描器 v3.0.1
 
 基于Python实现的简易端口扫描器
 
