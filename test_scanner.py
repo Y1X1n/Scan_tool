@@ -3,12 +3,6 @@
 端口扫描器测试脚本
 用于验证各个模块的功能
 """
-import sys
-import os
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from scanner.args_parser import parse_args, parse_ports, validate_ports
 from scanner.network_utils import resolve_hostname, validate_ip, get_service_name
 from scanner.scanner import PortScanner, ScanStatus

@@ -3,14 +3,10 @@
 端口扫描器Web界面
 基于Flask实现的图形化界面
 """
-import sys
 import os
 import json
 import threading
 from datetime import datetime
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, render_template, request, jsonify, Response
 from scanner.args_parser import parse_ports
@@ -19,7 +15,7 @@ from scanner.scanner import PortScanner, ScanStatus
 from scanner.output import JSONFormatter
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'port_scanner_secret_key'
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', os.urandom(24).hex())
 
 # 全局变量存储扫描状态
 scan_status = {
@@ -27,8 +23,10 @@ scan_status = {
     'progress': 0,
     'total': 0,
     'results': [],
-    'error': None
+    'error': None,
+    'statistics': None,
 }
+scan_status_lock = threading.Lock()
 
 
 @app.route('/')
@@ -42,8 +40,9 @@ def start_scan():
     """开始扫描API"""
     global scan_status
     
-    if scan_status['running']:
-        return jsonify({'error': '扫描正在进行中'}), 400
+    with scan_status_lock:
+        if scan_status['running']:
+            return jsonify({'error': '扫描正在进行中'}), 400
     
     try:
         data = request.get_json()
@@ -71,17 +70,19 @@ def start_scan():
         except Exception as e:
             return jsonify({'error': f'端口格式错误: {str(e)}'}), 400
         
-        # 重置扫描状态
-        scan_status = {
-            'running': True,
-            'progress': 0,
-            'total': len(ports),
-            'results': [],
-            'error': None,
-            'target': target,
-            'ip': ip,
-            'start_time': datetime.now().isoformat()
-        }
+        # 重置扫描状态（加锁保护）
+        with scan_status_lock:
+            scan_status = {
+                'running': True,
+                'progress': 0,
+                'total': len(ports),
+                'results': [],
+                'error': None,
+                'statistics': None,
+                'target': target,
+                'ip': ip,
+                'start_time': datetime.now().isoformat(),
+            }
         
         # 在后台线程中执行扫描
         def run_scan():
@@ -91,7 +92,8 @@ def start_scan():
                 
                 # 设置进度回调
                 def update_progress(current, total):
-                    scan_status['progress'] = current
+                    with scan_status_lock:
+                        scan_status['progress'] = current
                 
                 scanner.set_progress_callback(update_progress)
                 
@@ -109,14 +111,17 @@ def start_scan():
                         'response_time': round(r.response_time * 1000, 2)
                     })
                 
-                scan_status['results'] = formatted_results
-                scan_status['statistics'] = scanner.get_statistics()
-                scan_status['end_time'] = datetime.now().isoformat()
+                with scan_status_lock:
+                    scan_status['results'] = formatted_results
+                    scan_status['statistics'] = scanner.get_statistics()
+                    scan_status['end_time'] = datetime.now().isoformat()
                 
             except Exception as e:
-                scan_status['error'] = str(e)
+                with scan_status_lock:
+                    scan_status['error'] = str(e)
             finally:
-                scan_status['running'] = False
+                with scan_status_lock:
+                    scan_status['running'] = False
         
         thread = threading.Thread(target=run_scan)
         thread.daemon = True
@@ -131,29 +136,34 @@ def start_scan():
 @app.route('/api/status')
 def get_status():
     """获取扫描状态API"""
-    return jsonify(scan_status)
+    with scan_status_lock:
+        return jsonify(scan_status.copy())
 
 
 @app.route('/api/stop', methods=['POST'])
 def stop_scan():
     """停止扫描API"""
     global scan_status
-    scan_status['running'] = False
+    with scan_status_lock:
+        scan_status['running'] = False
     return jsonify({'message': '扫描已停止'})
 
 
 @app.route('/api/export/<format>')
 def export_results(format):
     """导出结果API"""
-    if not scan_status.get('results'):
-        return jsonify({'error': '没有可导出的结果'}), 400
+    with scan_status_lock:
+        if not scan_status.get('results'):
+            return jsonify({'error': '没有可导出的结果'}), 400
+        results_snapshot = list(scan_status['results'])
+        stats_snapshot = scan_status.get('statistics')
     
     try:
         from scanner.scanner import ScanResult
         
         # 转换回ScanResult对象
         results = []
-        for r in scan_status['results']:
+        for r in results_snapshot:
             results.append(ScanResult(
                 host=r['host'],
                 port=r['port'],
@@ -164,7 +174,7 @@ def export_results(format):
         
         if format == 'json':
             formatter = JSONFormatter()
-            output = formatter.format_results(results, scan_status.get('statistics'))
+            output = formatter.format_results(results, stats_snapshot)
             return Response(
                 output,
                 mimetype='application/json',
@@ -173,7 +183,7 @@ def export_results(format):
         elif format == 'csv':
             from scanner.output import CSVFormatter
             formatter = CSVFormatter()
-            output = formatter.format_results(results, scan_status.get('statistics'))
+            output = formatter.format_results(results, stats_snapshot)
             return Response(
                 output,
                 mimetype='text/csv',
@@ -186,8 +196,8 @@ def export_results(format):
         return jsonify({'error': str(e)}), 500
 
 
-if __name__ == '__main__':
-    # 创建templates和static目录
+def main():
+    """启动Web服务器"""
     os.makedirs('templates', exist_ok=True)
     os.makedirs('static', exist_ok=True)
     
@@ -199,4 +209,8 @@ if __name__ == '__main__':
     print("按Ctrl+C停止服务器")
     print("=" * 50)
     
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=False, host='127.0.0.1', port=5000)
+
+
+if __name__ == '__main__':
+    main()

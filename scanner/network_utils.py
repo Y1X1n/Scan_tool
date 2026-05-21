@@ -87,17 +87,15 @@ def check_host_reachable(host: str, timeout: float = 2.0) -> bool:
     :return: 是否可达
     """
     try:
-        # 尝试连接主机的7端口（Echo服务）
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
-        # 尝试连接到一个通常关闭的端口，如果连接被拒绝，说明主机可达
-        result = sock.connect_ex((host, 7))
+        sock.connect((host, 7))
         sock.close()
-        # 如果返回0表示连接成功（端口开放），其他值表示连接失败但主机可能可达
-        # 我们主要关心主机是否响应
-        return True
-    except socket.error:
-        return False
+        return True  # 连接成功，主机可达
+    except ConnectionRefusedError:
+        return True  # 连接被拒绝 → 主机在线，端口关闭但可达
+    except (socket.timeout, OSError):
+        return False  # 超时或其他网络错误 → 主机不可达
 
 
 def parse_ip_range(ip_range: str) -> List[str]:

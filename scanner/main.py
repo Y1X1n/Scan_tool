@@ -14,7 +14,6 @@ from .output import (
     print_banner, 
     print_progress, 
     print_scan_summary,
-    TextFormatter
 )
 
 
@@ -24,12 +23,14 @@ def main(args: Optional[List[str]] = None) -> int:
     :param args: 命令行参数列表
     :return: 退出码
     """
+    verbose = False
     try:
         # 打印横幅
         print_banner()
         
         # 解析命令行参数
         parsed_args = parse_args(args)
+        verbose = parsed_args.verbose
         
         # 显示扫描配置
         print(f"目标主机: {parsed_args.target}")
@@ -101,6 +102,15 @@ def main(args: Optional[List[str]] = None) -> int:
         # 根据需要过滤结果
         if parsed_args.open_only:
             results = scanner.get_open_ports()
+            # 同步更新统计信息，只反映开放端口
+            stats = {
+                "total_ports": len(results),
+                "scanned_ports": len(results),
+                "open_ports": len(results),
+                "closed_ports": 0,
+                "filtered_ports": 0,
+                "error_ports": 0
+            }
             print(f"开放端口数: {len(results)}")
         
         # 输出结果
@@ -108,21 +118,18 @@ def main(args: Optional[List[str]] = None) -> int:
         formatter.output(results, stats)
         
         # 打印摘要
-        if parsed_args.verbose:
+        if verbose:
             print_scan_summary(stats)
         
         # 返回退出码
-        if stats.get("open_ports", 0) > 0:
-            return 0  # 有开放端口，成功
-        else:
-            return 0  # 没有开放端口也是正常情况
+        return 0
             
     except KeyboardInterrupt:
         print("\n\n扫描被用户中断")
         return 130
     except Exception as e:
         print(f"\n错误: {str(e)}")
-        if args and "-v" in args or "--verbose" in args:
+        if verbose:
             import traceback
             traceback.print_exc()
         return 1

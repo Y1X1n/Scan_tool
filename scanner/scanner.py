@@ -3,7 +3,6 @@
 实现端口扫描的主要逻辑
 """
 import socket
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Callable, Optional, Any
@@ -220,16 +219,11 @@ class PortScanner:
             "errors": 0
         }
         
-        # 解析主机名
-        ip = network_utils.resolve_hostname(host)
-        if not ip:
-            raise ValueError(f"无法解析主机名: {host}")
-        
         # 使用线程池并发扫描
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # 提交所有任务
             future_to_port = {
-                executor.submit(self.scan_single_port, ip, port, scan_type): port
+                executor.submit(self.scan_single_port, host, port, scan_type): port
                 for port in ports
             }
             
@@ -246,7 +240,7 @@ class PortScanner:
                 except Exception as e:
                     port = future_to_port[future]
                     self.results.append(ScanResult(
-                        host=ip,
+                        host=host,
                         port=port,
                         status=ScanStatus.ERROR,
                         error=str(e)
@@ -273,106 +267,3 @@ class PortScanner:
             "filtered_ports": self.stats["filtered"],
             "error_ports": self.stats["errors"]
         }
-
-
-class AsyncScanner:
-    """异步扫描器（使用异步IO）"""
-    
-    def __init__(self, timeout: float = 1.0, max_concurrent: int = 100):
-        """
-        初始化异步扫描器
-        :param timeout: 连接超时时间
-        :param max_concurrent: 最大并发数
-        """
-        self.timeout = timeout
-        self.max_concurrent = max_concurrent
-    
-    async def scan_port_async(self, host: str, port: int) -> ScanResult:
-        """
-        异步扫描单个端口
-        :param host: 目标主机
-        :param port: 目标端口
-        :return: 扫描结果
-        """
-        import asyncio
-        
-        start_time = time.time()
-        
-        try:
-            # 创建连接
-            _, writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port),
-                timeout=self.timeout
-            )
-            
-            # 连接成功
-            writer.close()
-            await writer.wait_closed()
-            
-            response_time = time.time() - start_time
-            service = network_utils.get_service_name(port, "tcp")
-            
-            return ScanResult(
-                host=host,
-                port=port,
-                status=ScanStatus.OPEN,
-                service=service,
-                response_time=response_time
-            )
-            
-        except asyncio.TimeoutError:
-            return ScanResult(
-                host=host,
-                port=port,
-                status=ScanStatus.FILTERED,
-                response_time=time.time() - start_time,
-                error="Connection timeout"
-            )
-        except ConnectionRefusedError:
-            return ScanResult(
-                host=host,
-                port=port,
-                status=ScanStatus.CLOSED,
-                response_time=time.time() - start_time
-            )
-        except Exception as e:
-            return ScanResult(
-                host=host,
-                port=port,
-                status=ScanStatus.ERROR,
-                response_time=time.time() - start_time,
-                error=str(e)
-            )
-    
-    async def scan_ports_async(self, host: str, ports: List[int]) -> List[ScanResult]:
-        """
-        异步扫描多个端口
-        :param host: 目标主机
-        :param ports: 端口列表
-        :return: 扫描结果列表
-        """
-        import asyncio
-        
-        semaphore = asyncio.Semaphore(self.max_concurrent)
-        
-        async def scan_with_semaphore(port: int) -> ScanResult:
-            async with semaphore:
-                return await self.scan_port_async(host, port)
-        
-        tasks = [scan_with_semaphore(port) for port in ports]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # 处理异常
-        processed_results = []
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                processed_results.append(ScanResult(
-                    host=host,
-                    port=ports[i],
-                    status=ScanStatus.ERROR,
-                    error=str(result)
-                ))
-            else:
-                processed_results.append(result)
-        
-        return processed_results

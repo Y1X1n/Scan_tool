@@ -3,15 +3,11 @@
 端口扫描器桌面GUI
 基于Tkinter实现的图形化界面
 """
-import sys
 import os
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from datetime import datetime
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from scanner.args_parser import parse_ports
 from scanner.network_utils import resolve_hostname, validate_ip
@@ -24,7 +20,7 @@ class PortScannerGUI:
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("端口扫描器 v1.0.0")
+        self.root.title("端口扫描器 v3.0.0")
         self.root.geometry("900x700")
         self.root.minsize(800, 600)
         
@@ -474,7 +470,7 @@ class PortScannerGUI:
     def show_about(self):
         """显示关于信息"""
         about_text = """
-端口扫描器 v1.0.0
+端口扫描器 v3.0.0
 
 基于Python实现的简易端口扫描器
 
